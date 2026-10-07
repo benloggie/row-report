@@ -1,0 +1,1936 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>RowReport — Dashboard</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='media/logo.png') }}">
+
+
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Font Awesome (Icons) -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <!-- Select2 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
+  <!-- Custom Styles -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='loading.css') }}">
+
+  <!-- jQuery (required by Select2) -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <!-- Select2 JS -->
+  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Bootstrap Bundle (with Popper) -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</head>
+
+<body>
+  <div class="d-flex" style="min-height:100vh;">
+    <!-- SIDEBAR -->
+    <aside class="sidebar d-flex flex-column p-3 text-white vh-100">
+      <div class="mb-3">
+        <div class="brand">
+          <img src="{{ url_for('static', filename='media/heading_resize.png') }}" alt="RowReport">
+        </div>
+      </div>
+
+      <nav class="nav flex-column mb-3">
+        <a href="/dashboard" class="nav-link d-flex align-items-center px-3 py-2 {% if page == 'dashboard' %}active{% endif %}">
+          <i class="fa fa-solid fa-chart-pie me-3"></i> <span>Athlete Dashboard</span>
+        </a>
+        <a href="/dashboard/sessions" class="nav-link d-flex align-items-center px-3 py-2 {% if page == 'sessions' %}active{% endif %}">
+          <i class="fa fa-solid fa-calendar-days me-3"></i> <span>Sessions</span>
+        </a>
+        <a href="/online-users" class="nav-link d-flex align-items-center px-3 py-2 {% if page == 'online_users' %}active{% endif %}">
+          <i class="fa fa-solid fa-users me-3"></i> <span>Online Users</span> 
+        </a>
+        {% if (user.is_coach or user.is_admin) %}
+        <a href="/dashboard/upload" class="nav-link d-flex align-items-center px-3 py-2 {% if page == 'upload' %}active{% endif %}">
+          <i class="fa fa-solid fa-upload me-3"></i> <span>Upload Data</span>
+        </a>
+        {% endif %}
+        {% if user.is_admin %}
+        <a href="/dashboard/admin" class="nav-link d-flex align-items-center px-3 py-2 {% if page == 'admin' %}active{% endif %}">
+          <i class="fa fa-solid fa-user-gear me-3"></i> <span>Admin</span>
+        </a>
+        {% endif %}
+      </nav>
+
+      <div class="mt-auto pt-3 border-top" style="border-color:rgba(255,255,255,0.03); margin-bottom: 10%;">
+        <div class="mb-2 muted-sm">Logged in as</div>
+        <div class="fw-semibold">{{ user.email }}</div>
+        <div class="d-flex gap-2 mt-3">
+          <a href="/dashboard/account" class="btn btn-sm btn-ghost w-50">Account</a>
+          <a href="/logout" class="btn btn-sm btn-danger w-50">Logout</a>
+        </div>
+
+        <!-- GitHub button -->
+        <div class="mt-3">
+          <a href="https://github.com/duxkyx/RowReport" target="_blank" class="btn btn-sm btn-dark w-100 d-flex align-items-center justify-content-center">
+            <i class="fab fa-github me-2"></i> GitHub
+          </a>
+        </div>
+        
+        <p class="muted-sm mt-3 mb-0">Developed by Ben Loggie</p>
+      </div>
+      
+    </aside>
+
+    <!-- Sidebar toggle button (outside sidebar to always be visible) -->
+    <button id="sidebarToggle" class="sidebar-toggle" aria-label="Toggle navigation">
+      <span class="chevron">‹</span>
+    </button>
+
+    <!-- MAIN -->
+    <main class="flex-grow-1 app-main">
+
+      <!-- Loading overlay -->
+      <div id="loading-overlay">
+        <div class="spinner-container">
+            <div class="spinner"></div>
+            <div class="loading-text-container">
+              <div id="loading-text">Preparing</div>
+              <p id="loading-message"class="muted-sm">Processing over 1 million values of data. Please be patient, this may take a while.</p>
+            </div>
+        </div>
+      </div>
+
+      <!-- Dashboard Page -->
+      {% if page == 'dashboard' %}
+      <div class="header-row">
+        <div>
+          <div class="title">Welcome {{ user.last_name }}, {{ user.first_name }}</div>
+          <div class="subtle">Data-driven insights for your rowing performance</div>
+        </div>
+      </div>
+
+      <!-- Summary cards -->
+      <div class="summary-grid">
+        <div class="stat-card">
+          <h6>Sessions</h6>
+          <h3>{{ summary.num_sessions }}</h3>
+          <div class="muted-sm mt-2">Total recorded sessions</div>
+        </div>
+        <div class="stat-card">
+          <h6>Strokes Recorded</h6>
+          <h3>{{ summary.total_strokes }}</h3>
+          <div class="muted-sm mt-2">All strokes across sessions</div>
+        </div>
+        <div class="stat-card">
+          <h6>Distance Recorded</h6>
+          <h3>{{ summary.total_distance | round(2) }} m</h3>
+          <div class="muted-sm mt-2">Meters in dataset</div>
+        </div>
+        <div class="stat-card">
+          <h6>User Type</h6>
+          <h3>{{ summary.user_type }}</h3>
+          <div class="muted-sm mt-2">Account role</div>
+        </div>
+      </div>
+
+      <!-- Averages table -->
+      <div class="card-modern mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">User Averages</h5>
+          <div class="muted-sm">Aggregated across sessions</div>
+        </div>
+        <div class="card-body p-0 mt-3">
+          <div class="table-responsive">
+            <table class="table table-borderless align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>Training Zone</th>
+                  <th>Min Angle (deg)</th>
+                  <th>Max Angle (deg)</th>
+                  <th>Arc Length (deg)</th>
+                  <th>Catch Slip (deg)</th>
+                  <th>Finish Slip (deg)</th>
+                  <th>Power (w)</th>
+                  <th>Legs Drive (cm)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for state, data in averages.items() %}
+                  <tr>
+                    <td class="fw-bold "><a>{{ state }}</a></td>
+                    <td>{{ data.min_angle | round(2) }}</td>
+                    <td>{{ data.max_angle | round(2) }}</td>
+                    <td>{{ data.arc_length | round(2) }}</td>
+                    <td>{{ data.catch_slip | round(2) }}</td>
+                    <td>{{ data.finish_slip | round(2) }}</td>
+                    <td>{{ data.swivel_power | round(2) }}</td>
+                    <td>{{ data.seat_length | round(2) }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Charts row -->
+      <div class="row g-4 mb-5">
+        <div class="col-lg-6">
+          <div class="panel">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <strong>Synchronisation Average</strong>
+              <div class="muted-sm">Average timing across crew</div>
+            </div>
+            <div class="panel mb-4">{{ graphs.radar | safe }}</div>
+          </div>
+        </div>
+
+        <div class="col-lg-6">
+          <div class="panel">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <strong>GateForceX Curve</strong>
+              <div class="muted-sm">Force profile over stroke</div>
+            </div>
+            <div class="panel mb-4">{{ graphs.gateforcex | safe }}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Upload Page -->
+      {% elif page == 'upload' %}
+
+      <div class="header-row">
+        <div>
+          <div class="title">Upload Data</div>
+          <div class="subtle">Add session telemetry (.txt, .csv)</div>
+        </div>
+      </div>
+
+      <!-- Upload Form Section -->
+      <div class="upload-section">
+        <div class="upload-card">
+          <div class="upload-header">
+            <div class="upload-icon">
+              <i class="fas fa-cloud-upload-alt"></i>
+            </div>
+            <div class="upload-info">
+              <h3 class="upload-title">Upload Session Data</h3>
+              <p class="upload-subtitle">Select a telemetry file to begin the upload process</p>
+            </div>
+          </div>
+
+          <div class="upload-form">
+            <form action="/dashboard/upload" method="POST" enctype="multipart/form-data">
+              <div class="file-input-container">
+                <input type="file" id="file" name="file" accept=".txt,.csv" required style="display: none;">
+                <label for="file" class="file-input-label">
+                  <div class="file-input-content">
+                    <i class="fas fa-file-upload"></i>
+                    <span class="file-input-text">Choose file or drag & drop</span>
+                    <span class="file-input-subtext">.txt or .csv files only</span>
+                  </div>
+                </label>
+                <div class="file-name" id="file-name"></div>
+              </div>
+              <button type="submit" name="action" class="upload-btn" value="upload">
+                <i class="fas fa-upload"></i>
+                Upload File
+              </button>
+            </form>
+          </div>
+
+          {% if error %}
+          <div class="upload-error">
+            <i class="fas fa-exclamation-triangle"></i>
+            <span>{{ error }}</span>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Upload Session Modal -->
+      <div class="modal fade" id="uploadSessionModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+          <div class="modal-content bg-dark" style="border:0;background:linear-gradient(180deg,#071724,#04101a)">
+            <div class="modal-header border-0">
+              <h5 class="modal-title" style="color: #ffff;">Upload Session</h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="/dashboard/upload" method="POST" enctype="multipart/form-data">
+              <div class="modal-body">
+                <div class="container-fluid">
+                  <div class="mb-3">
+                    <label class="form-label">Enter rowing session title</label>
+                    <input required class="form-control" type="text" name="title_input" placeholder="Title" required>
+                  </div>
+                  <h6 class="subtle">Leave dropdown blank for private report</h6>
+                  {% if rowers %}
+                    {% for rower in rowers %}
+                      <div class="row align-items-center mb-3">
+                        <div class="col-md-3"><strong>{{ rower.name }}</strong></div>
+                        <div class="col-md-2">Seat: {{ rower.seat }}</div>
+                          <div class="col-md-5">
+                          <select class="form-control user-dropdown" name="user_search_{{ rower.seat }}" style="width:100%">
+                            <option value="">Select user...</option>
+                          </select>
+                        </div>
+                      </div>
+                    {% endfor %}
+                  {% else %}
+                    <p>No rowers detected for this session.</p>
+                  {% endif %}
+                </div>
+
+                <label class="form-label">Select Coxswain</label>
+                <select class="form-control user-dropdown" name="coxswain_search" style="width:100%">
+                  <option value="">Select user...</option>
+                </select>
+
+                <hr style="border-color:rgba(255,255,255,0.03)">
+
+                <div class="mb-3">
+                  <label class="form-label">Select training zone</label>
+                  <select class="form-select form-select-sm" name="state_selected">
+                    <option selected>UT1</option>
+                    <option value="UT1">UT1</option>
+                    <option value="UT2">UT2 (Steady)</option>
+                  </select>
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label">Add coach feedback | session description</label>
+                  <textarea class="form-control" rows="5" name="description_input" placeholder="Description..."></textarea>
+                </div>
+
+              </div>
+              <div class="modal-footer border-0">
+                <button id="uploadBtn" type="submit" name="action" class="btn btn-primary" value="confirm_upload">Upload</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sessions Page -->
+      {% elif page == 'sessions' %}
+
+      <div class="header-row">
+        <div>
+          <div class="title">Your Sessions</div>
+          <div class="subtle">Browse or inspect recorded sessions</div>
+        </div>
+      </div>
+
+      {% if sessions | length == 0 %}
+      <div class="card-modern p-5 text-center">
+        <i class="fa fa-calendar-days" style="font-size: 3rem; color: #9aa4b2; margin-bottom: 20px;"></i>
+        <h4 class="text-muted mb-2">No sessions available</h4>
+        <p class="text-muted">Data will be available once your coach has uploaded a session.</p>
+      </div>
+      {% else %}
+      <div class="sessions-grid">
+        {% for session in sessions %}
+        <div class="session-card">
+          <div class="session-card-header">
+            <div class="session-zone {% if session.state == 'UT1' %}zone-ut1{% else %}zone-ut2{% endif %}">
+              {{ session.state }}
+            </div>
+            <span class="session-id">#{{ session.id }}</span>
+          </div>
+
+          <div class="session-card-body">
+            <h5 class="session-title">{{ session.title }}</h5>
+            
+            <div class="session-meta">
+              <div class="meta-item">
+                <span class="meta-label">Coach</span>
+                <span class="meta-value">{{ session.coach_name or 'N/A' }}</span>
+              </div>
+              <div class="meta-item">
+                <span class="meta-label">Date</span>
+                <span class="meta-value">{{ session.date }}</span>
+              </div>
+            </div>
+
+            <div class="session-stats">
+              <div class="stat">
+                <span class="stat-value">{{ session.distance | round | int }}</span>
+                <span class="stat-label">meters</span>
+              </div>
+              <div class="stat">
+                <span class="stat-value">{{ session.tstrokes }}</span>
+                <span class="stat-label">strokes</span>
+              </div>
+              <div class="stat">
+                <span class="stat-value">{{ session.seats }}</span>
+                <span class="stat-label">crew</span>
+              </div>
+              <div class="stat">
+                <span class="stat-value">{{ session.timeelapsed }}</span>
+                <span class="stat-label">time</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="session-card-footer">
+            <div class="d-grid gap-2">
+              <button type="button" class="btn btn-sm btn-outline-secondary view-crew-btn" data-session-id="{{ session.id }}">View Crew</button>
+              <a href="/dashboard/sessions/session_id={{ session.id }}/page=overview" class="btn btn-sm btn-primary">Analyze Session</a>
+            </div>
+
+            <div class="crew-preview mt-2" id="crew-preview-{{ session.id }}" style="display:none;">
+              <div class="crew-loading muted-sm">Loading...</div>
+              <ul class="list-group crew-list mt-2"></ul>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <!-- Session Analysis Page | Overview -->
+      {% elif page == 'overview' %}
+
+      <!-- Top: Back + Delete -->
+      <div class="d-flex gap-2">
+        <a href="/dashboard/sessions" class="btn btn-sm btn-ghost">
+          ← Back
+        </a>
+
+        {% if user.is_coach or user.is_admin %}
+        <form action="/dashboard/sessions/session_id={{ boat_data.id }}/page=overview" method="POST" style="display:inline;">
+          <button type="submit"
+                  name="action"
+                  value="delete_session"
+                  class="btn btn-sm btn-outline-danger"
+                  onclick="return confirm('Are you sure you want to delete this session?');">
+            Delete Session
+          </button>
+        </form>
+        {% endif %}
+      </div>
+      <div class="header-row">
+        <div>
+          <div class="title">Session Details — ID {{ boat_data.id }}</div>
+          <div class="subtle">Overview & session metadata</div>
+        </div>
+        <div class="d-flex gap-2">
+          <a href="/dashboard/sessions/session_id={{ boat_data.id }}/page=overview" class="btn btn-sm btn-primary">Overview</a>
+          <a href="/dashboard/sessions/session_id={{ boat_data.id }}/page=session" class="btn btn-sm btn-ghost">Session</a>
+          <a href="/dashboard/sessions/session_id={{ boat_data.id }}/page=average" class="btn btn-sm btn-ghost">Average</a>
+          <a href="/dashboard/sessions/session_id={{ boat_data.id }}/page=samples" class="btn btn-sm btn-ghost">Intervals</a>
+        </div>
+      </div>
+
+      <div class="card-modern crew-card p-4 shadow-sm rounded-4">
+
+        <!-- HEADER -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <div>
+            <h4 class="mb-1">{{ boat_data.title }}</h4>
+            <small class="text-muted">{{ boat_data.date }} • {{ boat_data.state }}</small>
+          </div>
+          <span class="badge bg-primary fs-6 px-3 py-2">
+            {{ boat_data.filename }}
+          </span>
+        </div>
+
+        <!-- KEY METRICS -->
+        <div class="row text-center mb-4">
+          <div class="col-md-4 mb-3">
+            <div class="metric-box p-3 rounded-3 bg-light">
+              <h6 class="text-muted">Distance</h6>
+              <h3 class="fw-bold">{{ boat_data.distance | round(2) }} m</h3>
+            </div>
+          </div>
+
+          <div class="col-md-4 mb-3">
+            <div class="metric-box p-3 rounded-3 bg-light">
+              <h6 class="text-muted">Time Elapsed</h6>
+              <h3 class="fw-bold">{{ boat_data.timeelapsed }}</h3>
+            </div>
+          </div>
+
+          <div class="col-md-4 mb-3">
+            <div class="metric-box p-3 rounded-3 bg-light">
+              <h6 class="text-muted">Strokes</h6>
+              <h3 class="fw-bold">{{ boat_data.tstrokes }}</h3>
+            </div>
+          </div>
+        </div>
+
+        <!-- DETAILS GRID -->
+        <div class="row">
+
+          <!-- Crew Info -->
+          <div class="col-md-6 mb-3">
+            <div class="p-3 border rounded-3 h-100">
+              <h6 class="text-uppercase text-muted mb-3">Session Description</h6>
+              <p>{{ boat_data.description }}</p>
+            </div>
+          </div>
+
+          <!-- Equipment Info -->
+          <div class="col-md-6 mb-3">
+            <div class="p-3 border rounded-3 h-100">
+              <h6 class="text-uppercase text-muted mb-3">Equipment</h6>
+              <div class="d-flex justify-content-between mb-2">
+                <span>Inboard</span>
+                <strong>{{ boat_data.inboard }} cm</strong>
+              </div>
+              <div class="d-flex justify-content-between mb-2">
+                <span>Oar Length</span>
+                <strong>{{ boat_data.oarlength }} cm</strong>
+              </div>
+              <div class="d-flex justify-content-between mb-2">
+                <span>Logger Serial</span>
+                <strong>{{ boat_data.serial }}</strong>
+              </div>
+              <div class="d-flex justify-content-between mb-2">
+                <span>Seat Sensors</span>
+                <strong>{{ boat_data.seat_sensors }}</strong>
+              </div>
+              <div class="d-flex justify-content-between mb-2">
+                <span>Seats</span>
+                <strong>{{ boat_data.seats }}</strong>
+              </div>
+              <div class="d-flex justify-content-between mb-2">
+                <span>Rigging</span>
+                <strong>{{ boat_data.boattype }}</strong>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="card-modern p-4 shadow-sm rounded-4 crew-card">
+        <div class="crew-card-header d-flex align-items-start gap-3 mb-3">
+          <div class="crew-icon bg-primary text-white rounded-3 d-flex align-items-center justify-content-center" style="width:44px;height:44px;">
+            <i class="fa fa-users" style="font-size:18px"></i>
+          </div>
+          <div class="flex-grow-1">
+            <h4 class="mb-1">Crew List</h4>
+            <div class="subtle">Assign users to seats and choose the coxswain. Affected users will be emailed.</div>
+          </div>
+          {% if user.is_coach or user.is_admin %}
+          <button id="editCrewBtn" type="button" class="btn btn-outline-secondary btn-sm">Edit Crewlist</button>
+          {% endif %}
+        </div>
+        <form method="POST">
+          <input type="hidden" name="action" value="update_assignments">
+
+          <div class="table-responsive">
+            <table class="table table-hover align-middle">
+              <thead>
+                <tr>
+                  <th>Seat</th>
+                  <th>Side</th>
+                  <th>Name</th>
+                  <th>User</th>
+                  <th>Strokes Validated</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for rower in rowers %}
+                <tr>
+                  <td>{{ rower.telemetry.seat }}</td>
+                  <td>{{ rower.telemetry.side }}</td>
+                  <td>{{ rower.telemetry.name }}</td>
+                  <td>
+                      {% if user.is_coach or user.is_admin %}
+                        <div class="crew-display">
+                          {% if rower.user.user_id %}
+                            {{ rower.user.first_name }} {{rower.user.last_name }} ({{ rower.user.email }})
+                          {% else %}
+                            Unassigned
+                          {% endif %}
+                        </div>
+                        <div class="crew-editable d-none">
+                          <select name="user_for_seat_{{ rower.telemetry.seat }}" class="form-select form-select-sm crew-select" data-placeholder="Search users..." style="width:100%" disabled>
+                            <option value="">Unassigned</option>
+                            {% for u in all_users %}
+                              <option value="{{ u.id }}" {% if rower.user.user_id and rower.user.user_id == u.id %}selected{% endif %}>{{ u.first_name }} {{ u.last_name }} ({{ u.email }})</option>
+                            {% endfor %}
+                          </select>
+                        </div>
+                      {% else %}
+                        {% if rower.user.user_id %}
+                          {{ rower.user.first_name }} {{rower.user.last_name }} ({{ rower.user.email }})
+                        {% else %}
+                          Unassigned
+                        {% endif %}
+                      {% endif %}
+                  </td>
+                  <td>{{ rower.telemetry.strokes }}</td>
+                </tr>
+                {% endfor %}
+                <tr>
+                  <td>Coxswain</td>
+                  <td></td>
+                  <td></td>
+                  <td>
+                    {% if user.is_coach or user.is_admin %}
+                      <div class="crew-display">
+                        {% if coxswain_data and coxswain_data.user_id %}
+                          {{ coxswain_data.first_name }} {{coxswain_data.last_name }} ({{ coxswain_data.email }})
+                        {% else %}
+                          Unassigned
+                        {% endif %}
+                      </div>
+                      <div class="crew-editable d-none">
+                        <select name="coxswain_id" class="form-select form-select-sm crew-select" data-placeholder="Search users..." style="width:100%" disabled>
+                          <option value="">Unassigned</option>
+                          {% for u in all_users %}
+                            <option value="{{ u.id }}" {% if coxswain_data and coxswain_data.user_id and coxswain_data.user_id == u.id %}selected{% endif %}>{{ u.first_name }} {{ u.last_name }} ({{ u.email }})</option>
+                          {% endfor %}
+                        </select>
+                      </div>
+                    {% else %}
+                      {% if coxswain_data and coxswain_data.user_id %}
+                        {{ coxswain_data.first_name }} {{coxswain_data.last_name }} ({{ coxswain_data.email }})
+                      {% else %}
+                        Unassigned
+                      {% endif %}
+                    {% endif %}
+                  </td>
+                  <td></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          {% if user.is_coach or user.is_admin %}
+          <div id="saveCrewContainer" class="d-none d-flex justify-content-end mt-3">
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+          </div>
+          {% endif %}
+        </form>
+      </div>
+
+      <div class="card-modern p-4 shadow-sm rounded-4">
+        <div class="plot-wrapper">
+          <div class="panel mb-4">{{ graphs.map | safe }}</div>
+          <button class="plot-fullscreen-btn" title="Fullscreen">⛶</button>
+        </div>
+      </div>
+
+      <!-- Session Analysis Page | Session -->
+      {% elif page == 'session' %}
+
+      <div class="header-row">
+        <div>
+          <div class="title">Session description</div>
+          <div class="subtle">Session description & distribution of the intervals</div>
+        </div>
+        <div class="d-flex gap-2">
+          <a href="/dashboard/sessions/session_id={{ boat_data.id }}/page=overview" class="btn btn-sm btn-ghost">Overview</a>
+          <a href="/dashboard/sessions/session_id={{ boat_data.id }}/page=session" class="btn btn-sm btn-primary">Session</a>
+          <a href="/dashboard/sessions/session_id={{ boat_data.id }}/page=average" class="btn btn-sm btn-ghost">Average</a>
+          <a href="/dashboard/sessions/session_id={{ boat_data.id }}/page=samples" class="btn btn-sm btn-ghost">Intervals</a>
+        </div>
+      </div>
+
+      <div class="card-modern p-3 table-responsive">
+        <div class="table-responsive mt-3">
+          <table class="table table-hover align-middle mb-4">
+            <thead>
+              <tr>
+                <th>Interval</th>
+                <th>Interval Duration (s)</th>
+                <th>Strokes in Interval</th>
+                <th>Stroke Rate (s/pm)</th>
+                <th>Avg Power (w)</th>
+                <th>Stroke Time (s)</th>
+                <th>Distance Per Stroke (m)</th>
+                <th>Avg Speed (m/s)</th>
+                <th>Split (/500m)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for sample in range(0,8) %}
+              {% set rate = boat_data.rating[sample] %}
+              {% set sample_time = boat_data.sample_time[sample] %}
+              {% set strokes_in_sample = boat_data.sample_strokes[sample] %}
+              {% if boat_data.distance %}
+                {% set split = (((sample_time) / (boat_data.distance / 8)) * 500) %}
+              {% else %}
+                {% set split = 0 %}
+              {% endif %}
+              {% set minutes = split // 60 %}
+              {% set seconds = split % 60 %}
+                <tr>
+                  <td>{{ sample + 1 }}</td>
+                  <td>{{ sample_time | round(2) }}</td>
+                  <td>{{ strokes_in_sample }}</td>
+                  <td>{{ rate }}</td>
+                  <td>{{ boat_data.averagepower[sample] }}</td>
+                  <td>{{ boat_data.stroketime[sample] }}</td>
+                  <td>{{ boat_data.distanceperstroke[sample] }}</td>
+                  <td>{{ boat_data.meterspersecond[sample] }}</td>
+                  <td>{{ minutes | int }}:{{ '%02d' % seconds}}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card-modern p-3 table-responsive">
+        <div class="title">Athlete Power Distribution</div>
+        <div class="subtle">Interval-based power output for each athete over 8 intervals.</div>  
+        <div class="table-responsive mt-3">
+          <table class="table table-hover align-middle mb-4">
+            <thead>
+              <tr>
+                <th>Seat</th>
+                <th>Athlete</th>
+                <th>Avg</th>
+                <th>1</th>
+                <th>2</th>
+                <th>3</th>
+                <th>4</th>
+                <th>5</th>
+                <th>6</th>
+                <th>7</th>
+                <th>8</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for rower in rowers %}
+
+              {% set data = rower.telemetry %}
+
+              <tr>
+                <td>{{ data.seat }}</td>
+                <td>{{ rower.user.last_name }}</td>
+                <td>{{ ((data.rower_swivel_power | sum) / (data.rower_swivel_power | length)) | round(3) }}</td>
+                <td>{{ data.rower_swivel_power[0] | round(2) }}</td>
+                <td>{{ data.rower_swivel_power[1] | round(2) }}</td>
+                <td>{{ data.rower_swivel_power[2] | round(2) }}</td>
+                <td>{{ data.rower_swivel_power[3] | round(2) }}</td>
+                <td>{{ data.rower_swivel_power[4] | round(2) }}</td>
+                <td>{{ data.rower_swivel_power[5] | round(2) }}</td>
+                <td>{{ data.rower_swivel_power[6] | round(2) }}</td>
+                <td>{{ data.rower_swivel_power[7] | round(2) }}</td>
+              </tr>
+
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="plot-wrapper">
+          <div class="panel mb-4">{{ graphs.power_timeline | safe }}</div>
+          <button class="plot-fullscreen-btn" title="Fullscreen">⛶</button>
+        </div>
+      </div> 
+
+      <div class="card-modern p-3 table-responsive">
+        <div class="title">Boat Angular Displacements</div>
+        <div class="subtle">Physical shells attitude graphs.</div> 
+        <div class="plot-wrapper">
+          <div class="panel mb-4">{{ graphs.rowing_speed | safe }}</div>
+          <button class="plot-fullscreen-btn" title="Fullscreen">⛶</button>
+        </div>
+
+        <div class="plot-wrapper">
+          <div class="panel mb-4">{{ graphs.acceleration | safe }}</div>
+          <button class="plot-fullscreen-btn" title="Fullscreen">⛶</button>
+        </div>
+
+        <div class="plot-wrapper">
+          <div class="panel mb-4">{{ graphs.boat_roll | safe }}</div>
+          <button class="plot-fullscreen-btn" title="Fullscreen">⛶</button>
+        </div>
+
+        <div class="plot-wrapper">
+          <div class="panel mb-4">{{ graphs.boat_pitch | safe }}</div>
+          <button class="plot-fullscreen-btn" title="Fullscreen">⛶</button>
+        </div>
+
+        <div class="plot-wrapper">
+          <div class="panel mb-4">{{ graphs.boat_yaw | safe }}</div>
+          <button class="plot-fullscreen-btn" title="Fullscreen">⛶</button>
+        </div>
+      </div>
+      <!-- Session Analysis Page | Average -->
+      {% elif page == 'average' %}
+
+      <div class="header-row">
+        <div>
+          <div class="title">Average Session Statistics</div>
+          <div class="subtle">Aggregated seat-by-seat averages</div>
+        </div>
+        <div class="d-flex gap-2">
+          <a href="/dashboard/sessions/session_id={{ boat_data.id }}/page=overview" class="btn btn-sm btn-ghost">Overview</a>
+          <a href="/dashboard/sessions/session_id={{ boat_data.id }}/page=session" class="btn btn-sm btn-ghost">Session</a>
+          <a href="/dashboard/sessions/session_id={{ boat_data.id }}/page=average" class="btn btn-sm btn-primary">Average</a>
+          <a href="/dashboard/sessions/session_id={{ boat_data.id }}/page=samples" class="btn btn-sm btn-ghost">Intervals</a>
+        </div>
+      </div>
+
+      <div class="card-modern p-3 table-responsive">
+        <h5 class="mb-2">Average Data</h5>
+        {% if boat_data.rating | length %}
+          {% set rating = (boat_data.rating | sum) / (boat_data.rating | length) %}
+        {% else %}
+          {% set rating = 0 %}
+        {% endif %}
+        {% if boat_data.averagepower | length %}
+          {% set power = (boat_data.averagepower | sum) / (boat_data.averagepower | length) %}
+        {% else %}
+          {% set power = 0 %}
+        {% endif %}
+        {% if boat_data.distanceperstroke | length %}
+          {% set dps = (boat_data.distanceperstroke | sum) / (boat_data.distanceperstroke | length) %}
+        {% else %}
+          {% set dps = 0 %}
+        {% endif %}
+        {% if boat_data.meterspersecond | length %}
+          {% set mps = (boat_data.meterspersecond | sum) / (boat_data.meterspersecond | length) %}
+        {% else %}
+          {% set mps = 0 %}
+        {% endif %}
+
+        <h6 class="muted-sm">Rate {{ rating | round(2) }} (s/m) | Avg Power {{ power | round(2) }} (w) | Distance per Stroke {{ dps | round(2) }} (m) | Boat Speed {{ mps | round(2) }} (m/s)</h6>
+
+        <div class="table-responsive mt-3">
+          <table class="table table-hover align-middle mb-4">
+            <thead>
+              <tr>
+                <th>Seat</th>
+                <th>Athlete</th>
+                <th>Drive Time (s)</th>
+                <th>Recovery Time (s)</th>
+                <th>Rhythmn (%)</th>
+                <th>Min Angle (deg)</th>
+                <th>Max Angle (deg)</th>
+                <th>Arc Length (deg)</th>
+                <th>Catch Slip (deg)</th>
+                <th>Finish Slip (deg)</th>
+                <th>Effective Length (deg)</th>
+                <th>Effective Length (%)</th>
+                {% if boat_data.seat_sensors %}
+                  <th>Catch Factor (ms)</th>
+                {% endif %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for rower in rowers %}
+                {% set data = rower.telemetry %}
+                {% if data.drive_time | length %}
+                  {% set drive_time = (data.drive_time | sum) / (data.drive_time | length) %}
+                {% else %}
+                  {% set drive_time = 0 %}
+                {% endif %}
+                {% if data.recovery_time | length %}
+                  {% set recovery_time = (data.recovery_time | sum) / (data.recovery_time | length) %}
+                {% else %}
+                  {% set recovery_time = 0 %}
+                {% endif %}
+                {% if data.min_angle | length %}
+                  {% set min_angle = (data.min_angle | sum) / (data.min_angle | length) %}
+                {% else %}
+                  {% set min_angle = 0 %}
+                {% endif %}
+                {% if data.max_angle | length %}
+                  {% set max_angle = (data.max_angle | sum) / (data.max_angle | length) %}
+                {% else %}
+                  {% set max_angle = 0 %}
+                {% endif %}
+                {% if data.arc_length | length %}
+                  {% set arc_length = (data.arc_length | sum) / (data.arc_length | length) %}
+                {% else %}
+                  {% set arc_length = 0 %}
+                {% endif %}
+                {% if data.catch_slip | length %}
+                  {% set catch_slip = (data.catch_slip | sum) / (data.catch_slip | length) %}
+                {% else %}
+                  {% set catch_slip = 0 %}
+                {% endif %}
+                {% if data.finish_slip | length %}
+                  {% set finish_slip = (data.finish_slip | sum) / (data.finish_slip | length) %}
+                {% else %}
+                  {% set finish_slip = 0 %}
+                {% endif %}
+                {% set total_drive_recovery = recovery_time + drive_time %}
+                {% if total_drive_recovery %}
+                  {% set rhythm = ((drive_time / total_drive_recovery) * 100) %}
+                {% else %}
+                  {% set rhythm = 0 %}
+                {% endif %}
+                {% set effective_length = (arc_length - (catch_slip + finish_slip)) %}
+                {% if arc_length %}
+                  {% set effective_length_pct = ((effective_length / arc_length) * 100) %}
+                {% else %}
+                  {% set effective_length_pct = 0 %}
+                {% endif %}
+
+                {% if boat_data.seat_sensors %}
+                  {% if data.catch_factor | length %}
+                    {% set catch_factor = (data.catch_factor | sum) / (data.catch_factor | length) %}
+                  {% else %}
+                    {% set catch_factor = 0 %}
+                  {% endif %}
+                {% endif %}
+                <tr>
+                  <td>{{ rower.telemetry.seat }}</td>
+                  {% if rower.user.user_id %}
+                    <td>{{ rower.user.last_name }}</td>
+                  {% else %}
+                    <td>{{ rower.telemetry.name }}</td>
+                  {% endif %}
+                  <td>{{ drive_time | round(2) }}</td>
+                  <td>{{ recovery_time | round(2)}}</td>
+                  <td>{{ rhythm | round(2) }}</td>
+                  <td>{{ min_angle | round(2) }}</td>
+                  <td>{{ max_angle | round(2) }}</td>
+                  <td>{{ arc_length | round(2) }}</td>
+                  <td>{{ catch_slip | round(2) }}</td>
+                  <td>{{ finish_slip | round(2) }}</td>
+                  <td>{{ effective_length | round(2) }}</td>
+                  <td>{{ effective_length_pct | round(2) }}</td>
+                  {% if boat_data.seat_sensors %}
+                    <td>{{ catch_factor | round(2) }}</td>
+                  {% endif %}
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="table-responsive mt-3">
+          <table class="table table-hover align-middle mb-4">
+            <thead>
+              <tr>
+                <th>Seat</th>
+                <th>Power (w)</th>
+                <th>Max Force (kg)</th>
+                <th>Average Force (kg)</th>
+                <th>Aver / Max Force (%)</th>
+                <th>Position of Peak Force (%)</th>
+                <th>Catch Force Gradient (deg)</th>
+                <th>Finish Force Gradient (deg)</th>
+                {% if boat_data.seat_sensors %}
+                  <th>Legs Drive (cm)</th>
+                  <th>Legs Max Velocity (m/s)</th>
+                {% endif %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for rower in rowers %}
+                {% set data = rower.telemetry %}
+                {% if data.rower_swivel_power | length %}
+                  {% set swivel_power = (data.rower_swivel_power | sum) / (data.rower_swivel_power | length) %}
+                {% else %}
+                  {% set swivel_power = 0 %}
+                {% endif %}
+                {% if data.max_gate_force_x | length %}
+                  {% set max_gate_force_x = (data.max_gate_force_x | sum) / (data.max_gate_force_x | length) %}
+                {% else %}
+                  {% set max_gate_force_x = 0 %}
+                {% endif %}
+                {% if data.average_gate_force_x | length %}
+                  {% set average_gate_force_x = (data.average_gate_force_x | sum) / (data.average_gate_force_x | length) %}
+                {% else %}
+                  {% set average_gate_force_x = 0 %}
+                {% endif %}
+                {% if max_gate_force_x %}
+                  {% set avermax = ((average_gate_force_x / max_gate_force_x) * 100) | round(2) %}
+                {% else %}
+                  {% set avermax = 0 %}
+                {% endif %}
+                {% if data.position_of_maxf | length %}
+                  {% set position_of_maxf = (data.position_of_maxf | sum) / (data.position_of_maxf | length) %}
+                {% else %}
+                  {% set position_of_maxf = 0 %}
+                {% endif %}
+                {% if data.catch_force_gradient | length %}
+                  {% set catch_force_gradient = (data.catch_force_gradient | sum) / (data.catch_force_gradient | length) %}
+                {% else %}
+                  {% set catch_force_gradient = 0 %}
+                {% endif %}
+                {% if data.finish_force_gradient | length %}
+                  {% set finish_force_gradient = (data.finish_force_gradient | sum) / (data.finish_force_gradient | length) %}
+                {% else %}
+                  {% set finish_force_gradient = 0 %}
+                {% endif %}
+
+                {% if boat_data.seat_sensors %}
+                  {% if data.finish_force_gradient | length %}
+                    {% set seat_length = (data.seat_length | sum) / (data.finish_force_gradient | length) %}
+                  {% else %}
+                    {% set seat_length = 0 %}
+                  {% endif %}
+                  {% if data.legs_max_vel | length %}
+                    {% set legs_max_vel = (data.legs_max_vel | sum) / (data.legs_max_vel | length) %}
+                  {% else %}
+                    {% set legs_max_vel = 0 %}
+                  {% endif %}
+                {% endif %}
+
+                <tr>
+                  <td>{{ rower.telemetry.seat }}</td>
+                  <td>{{ swivel_power | round(2) }}</td>
+                  <td>{{ max_gate_force_x | round(2) }}</td>
+                  <td>{{ average_gate_force_x | round(2) }}</td>
+                  <td>{{ avermax | round(2) }}</td>
+                  <td>{{ position_of_maxf | round(2) }}</td>
+                  <td>{{ catch_force_gradient | round(2) }}</td>
+                  <td>{{ finish_force_gradient | round(2) }}</td>
+                  {% if boat_data.seat_sensors %}
+                    <td>{{ seat_length | round(2) }}</td>
+                    <td>{{ legs_max_vel | round(2) }}</td>
+                  {% endif %}
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <h4>Syncronisation</h4>
+        <div class="subtle">Measured in milliseconds as a comparison against the stroke seat. Calculated on difference of handle position.</div>
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-4">
+            <thead>
+              <tr>
+                <th>Seat</th>
+                <th>25% Recovery</th>
+                <th>50% Recovery</th>
+                <th>75% Recovery</th>
+                <th>Hang Start</th>
+                <th>Min Angle</th>
+                <th>Catch</th>
+                <th>Effect Start</th>
+                <th>Up-to 70% Peak Force</th>
+                <th>Peak Force</th>
+                <th>From 70% Peak Force</th>
+                <th>Effect End</th>
+                <th>Finish</th>
+                <th>Max Angle</th>
+                <th>Release</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for rower in rowers %}
+                {% if rower.telemetry.difference_25 | length %}
+                  {% set difference_25 = (rower.telemetry.difference_25 | sum) / (rower.telemetry.difference_25 | length) %}
+                {% else %}
+                  {% set difference_25 = 0 %}
+                {% endif %}
+                {% if rower.telemetry.difference_50 | length %}
+                  {% set difference_50 = (rower.telemetry.difference_50 | sum) / (rower.telemetry.difference_50 | length) %}
+                {% else %}
+                  {% set difference_50 = 0 %}
+                {% endif %}
+                {% if rower.telemetry.difference_75 | length %}
+                  {% set difference_75 = (rower.telemetry.difference_75 | sum) / (rower.telemetry.difference_75 | length) %}
+                {% else %}
+                  {% set difference_75 = 0 %}
+                {% endif %}
+                {% if rower.telemetry.difference_hang | length %}
+                  {% set difference_hang = (rower.telemetry.difference_hang | sum) / (rower.telemetry.difference_hang | length) %}
+                {% else %}
+                  {% set difference_hang = 0 %}
+                {% endif %}
+                {% if rower.telemetry.difference_min | length %}
+                  {% set difference_min = (rower.telemetry.difference_min | sum) / (rower.telemetry.difference_min | length) %}
+                {% else %}
+                  {% set difference_min = 0 %}
+                {% endif %}
+                {% if rower.telemetry.difference_catch | length %}
+                  {% set difference_catch = (rower.telemetry.difference_catch | sum) / (rower.telemetry.difference_catch | length) %}
+                {% else %}
+                  {% set difference_catch = 0 %}
+                {% endif %}
+                {% if rower.telemetry.difference_effective_start | length %}
+                  {% set difference_effective_start = (rower.telemetry.difference_effective_start | sum) / (rower.telemetry.difference_effective_start | length) %}
+                {% else %}
+                  {% set difference_effective_start = 0 %}
+                {% endif %}
+                {% if rower.telemetry.difference_70max | length %}
+                  {% set difference_70max = (rower.telemetry.difference_70max | sum) / (rower.telemetry.difference_70max | length) %}
+                {% else %}
+                  {% set difference_70max = 0 %}
+                {% endif %}
+                {% if rower.telemetry.difference_max | length %}
+                  {% set difference_max = (rower.telemetry.difference_max | sum) / (rower.telemetry.difference_max | length) %}
+                {% else %}
+                  {% set difference_max = 0 %}
+                {% endif %}
+                {% if rower.telemetry.difference_max70 | length %}
+                  {% set difference_max70 = (rower.telemetry.difference_max70 | sum) / (rower.telemetry.difference_max70 | length) %}
+                {% else %}
+                  {% set difference_max70 = 0 %}
+                {% endif %}
+                {% if rower.telemetry.difference_effective_end | length %}
+                  {% set difference_effective_end = (rower.telemetry.difference_effective_end | sum) / (rower.telemetry.difference_effective_end | length) %}
+                {% else %}
+                  {% set difference_effective_end = 0 %}
+                {% endif %}
+                {% if rower.telemetry.difference_finish | length %}
+                  {% set difference_finish = (rower.telemetry.difference_finish | sum) / (rower.telemetry.difference_finish | length) %}
+                {% else %}
+                  {% set difference_finish = 0 %}
+                {% endif %}
+                {% if rower.telemetry.difference_recovery | length %}
+                  {% set difference_recovery = (rower.telemetry.difference_recovery | sum) / (rower.telemetry.difference_recovery | length) %}
+                {% else %}
+                  {% set difference_recovery = 0 %}
+                {% endif %}
+
+                <tr>
+                  <td>{{ rower.telemetry.seat }}</td>
+                  <td>{{ difference_25 | round(3) }}</td>
+                  <td>{{ difference_50 | round(3) }}</td>
+                  <td>{{ difference_75 | round(3) }}</td>
+                  <td>{{ difference_hang | round(3) }}</td>
+                  <td>{{ difference_min | round(3) }}</td>
+                  <td>{{ difference_catch | round(3) }}</td>
+                  <td>{{ difference_effective_start | round(3) }}</td>
+                  <td>{{ difference_70max | round(3)}}</td>
+                  <td>{{ difference_max | round(3)}}</td>
+                  <td>{{ difference_max70 | round(3)}}</td>
+                  <td>{{ difference_effective_end | round(3)}}</td>
+                  <td>{{ difference_finish | round(3)}}</td>
+                  <td>{{ difference_max | round(3)}}</td>
+                  <td>{{ difference_recovery | round(3)}}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Graphs retained in same placeholders -->
+
+        <div class="plot-wrapper">
+         <div class="panel mb-4">{{ graphs.syncronisation | safe }}</div>
+          <button class="plot-fullscreen-btn" title="Fullscreen">⛶</button>
+        </div>
+
+        <div class="plot-wrapper">
+          <div class="panel mb-4">{{ graphs.ratios | safe }}</div>
+          <button class="plot-fullscreen-btn" title="Fullscreen">⛶</button>
+        </div>
+
+        <div class="plot-wrapper">
+          <div class="panel mb-4">{{ graphs.gateforcex | safe }}</div>
+          <button class="plot-fullscreen-btn" title="Fullscreen">⛶</button>
+        </div>
+
+        {% if boat_data.seat_sensors %}
+        <div class="plot-wrapper">
+          <div class="row g-4">
+            <div class="col-lg-6"><div class="panel">{{ graphs.handlevelocity | safe }}</div></div>
+            <div class="col-lg-6"><div class="panel">{{ graphs.legsvelocity | safe }}</div></div>
+          </div>
+          <button class="plot-fullscreen-btn" title="Fullscreen">⛶</button>
+        </div>
+
+        <div class="plot-wrapper">
+          <div class="row g-4">
+            <div class="col-lg-6"><div class="panel">{{ graphs.bodyarmsvelocity | safe }}</div></div>
+            <div class="col-lg-6"><div class="panel">{{ graphs.bodyarmsvelocity_seatposn | safe }}</div></div>
+          </div>
+          <button class="plot-fullscreen-btn" title="Fullscreen">⛶</button>
+        </div>
+
+        <div class="plot-wrapper">
+          <div class="row g-4">
+            <div class="col-lg-6"><div class="panel">{{ graphs.legsvelocity_gateangle | safe }}</div></div>
+            <div class="col-lg-6"><div class="panel">{{ graphs.bodyarmsvelocity_gateangle | safe }}</div></div>
+          </div>
+          <button class="plot-fullscreen-btn" title="Fullscreen">⛶</button>
+        </div>
+
+        <div class="plot-wrapper">
+          <div class="row g-4">
+            <div class="col-lg-6"><div class="panel">{{ graphs.seatposition | safe }}</div></div>
+            <div class="col-lg-6"><div class="panel">{{ graphs.legs_velocity_seatposn | safe }}</div></div>
+          </div>
+          <button class="plot-fullscreen-btn" title="Fullscreen">⛶</button>
+        </div>
+
+        <div class="plot-wrapper">
+          <div class="panel mb-4">{{ graphs.gateforcepercent | safe }}</div>
+          <button class="plot-fullscreen-btn" title="Fullscreen">⛶</button>
+        </div>
+
+        {% else %}
+
+        <div class="plot-wrapper">
+          <div class="row g-4">
+            <div class="col-lg-6"><div class="panel">{{ graphs.handlevelocity | safe }}</div></div>  
+            <div class="col-lg-6"><div class="panel">{{ graphs.gateforcepercent | safe }}</div></div>
+          </div>
+          <button class="plot-fullscreen-btn" title="Fullscreen">⛶</button>
+        </div>
+
+        {% endif %}
+
+        <div class="plot-wrapper">
+          <div class="panel mb-4">{{ graphs.gateanglevelocitydeg | safe }}</div>
+          <button class="plot-fullscreen-btn" title="Fullscreen">⛶</button>
+        </div>
+
+      </div>
+
+      <!-- Session Analysis Page | Samples -->
+      {% elif page == 'samples' %}
+
+      <div class="header-row">
+        <div>
+          <div class="title">Session Interval Statistics</div>
+          <div class="subtle">8 × intervals from the session</div>
+        </div>
+        <div class="d-flex gap-2">
+          <a href="/dashboard/sessions/session_id={{ boat_data.id }}/page=overview" class="btn btn-sm btn-ghost">Overview</a>
+          <a href="/dashboard/sessions/session_id={{ boat_data.id }}/page=session" class="btn btn-sm btn-ghost">Session</a>
+          <a href="/dashboard/sessions/session_id={{ boat_data.id }}/page=average" class="btn btn-sm btn-ghost">Average</a>
+          <a href="/dashboard/sessions/session_id={{ boat_data.id }}/page=samples" class="btn btn-sm btn-primary">Intervals</a>
+        </div>
+      </div>
+
+      <div>
+        <div class="container-fluid">
+          <div class="row justify-content-center">
+            <div class="col-12 col-md-6 col-lg-5">
+
+              <h3 class="mb-4 text-center">Select an Interval to view</h3>
+
+              <form method="POST" action="/dashboard/sessions/session_id={{ boat_data.id }}/page=samples">
+                <div class="dropdown mb-3">
+                  <button class="btn btn-primary dropdown-toggle w-100 text-start" type="button" 
+                          id="sampleDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                          {{ sample_selected or 'Select an interval to view' }}
+                  </button>
+                  
+                  <ul class="dropdown-menu" aria-labelledby="sampleDropdown">
+                    <li class="dropdown-header text-muted ps-3 py-2">Available intervals</li>
+                    <li><hr class="dropdown-divider"></li>
+                    {% for i in range(1, 9) %}
+                      <li>
+                        <button type="submit" name="sample_id" value="{{ i }}" 
+                                class="dropdown-item {% if sample_selected == 'Interval ' ~ i %}active{% endif %}">
+                                Interval {{ i }} | {{ (boat_data.distance / 8 * (i-1)) | round | int }} m - {{ (boat_data.distance / 8 * i) | round | int}} m
+                        </button>
+                      </li>
+                    {% endfor %}
+                  </ul>
+                </div>
+              </form>
+
+              {% if sample_selected %}
+              <div class="alert alert-info mt-4">
+                <strong>Selected:</strong> {{ sample_selected }}
+                {{ (boat_data.distance / 8 * (sample_selected-1 | int)) | round(2) }} m -> {{ (boat_data.distance / 8 * (sample_selected | int)) | round(2)}} m
+              </div>
+              {% endif %}
+
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      {% if sample_selected != None %}
+      {% set sample = sample_selected | int - 1 %}
+    
+      <div class="card-modern p-3 table-responsive">
+        <h5>Interval {{ sample + 1 }}/8</h5>
+        <h6 class="muted-sm">Rate {{ boat_data.rating[sample] }} (s/m) | Avg Power {{ boat_data.averagepower[sample] }} (w) | Distance per Stroke {{ boat_data.distanceperstroke[sample] }} (m) | Boat Speed {{ boat_data.meterspersecond[sample] }} (m/s)</h6>
+
+        <div class="table-responsive mt-3">
+          <table class="table table-hover align-middle mb-4">
+            <thead>
+              <tr>
+                <th>Seat</th>
+                <th>Athlete</th>
+                <th>Drive Time (s)</th>
+                <th>Recovery Time (s)</th>
+                <th>Rhythmn (%)</th>
+                <th>Min Angle (deg)</th>
+                <th>Max Angle (deg)</th>
+                <th>Arc Length (deg)</th>
+                <th>Catch Slip (deg)</th>
+                <th>Finish Slip (deg)</th>
+                <th>Effective Length (deg)</th>
+                <th>Effective Length (%)</th>
+                {% if boat_data.seat_sensors %}
+                  <th>Catch Factor (ms)</th>
+                {% endif %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for rower in rowers %}
+                {% set drive_time = rower.telemetry.drive_time[sample] %}
+                {% set recovery_time = rower.telemetry.recovery_time[sample] %}
+                {% set min_angle = rower.telemetry.min_angle[sample] %}
+                {% set max_angle = rower.telemetry.max_angle[sample] %}
+                {% set arc_length = rower.telemetry.arc_length[sample] %}
+                {% set catch_slip = rower.telemetry.catch_slip[sample] %}
+                {% set finish_slip = rower.telemetry.finish_slip[sample] %}
+
+                {% if boat_data.seat_sensors %}
+                  {% set catch_factor = rower.telemetry.catch_factor[sample] %}
+                {% endif %}
+
+                <tr>
+                  <td>{{ rower.telemetry.seat }}</td>
+                  {% if rower.user.user_id %}
+                    <td>{{ rower.user.last_name }}</td>
+                  {% else %}
+                    <td>{{ rower.telemetry.name }}</td>
+                  {% endif %}
+                  <td>{{ drive_time }}</td>
+                  <td>{{ recovery_time }}</td>
+                  <td>{{ ((drive_time / (recovery_time + drive_time)) * 100) | round(2) }}</td>
+                  <td>{{ min_angle }}</td>
+                  <td>{{ max_angle }}</td>
+                  <td>{{ arc_length }}</td>
+                  <td>{{ catch_slip }}</td>
+                  <td>{{ finish_slip }}</td>
+                  <td>{{ ((arc_length) - (catch_slip + finish_slip)) | round(2)}}</td>
+                  <td>{{ (((arc_length - (catch_slip + finish_slip)) / arc_length) * 100) | round(2) }}</td>
+                  {% if boat_data.seat_sensors %}
+                    <td>{{ catch_factor }}</td>
+                  {% endif %}
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-4">
+            <thead>
+              <tr>
+                <th>Seat</th>
+                <th>Power (w)</th>
+                <th>Max Force (kg)</th>
+                <th>Average Force (kg)</th>
+                <th>Aver / Max Force (%)</th>
+                <th>Position of Peak Force (%)</th>
+                <th>Catch Force Gradient (deg)</th>
+                <th>Finish Force Gradient (deg)</th>
+                {% if boat_data.seat_sensors %}
+                  <th>Legs Drive (cm)</th>
+                  <th>Legs Max Velocity (m/s)</th>
+                {% endif %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for rower in rowers %}
+                {% set swivel_power = rower.telemetry.rower_swivel_power[sample] %}
+                <tr>
+                  <td>{{ rower.telemetry.seat }}</td>
+                  <td>{{ rower.telemetry.rower_swivel_power[sample] }}</td>
+                  <td>{{ rower.telemetry.max_gate_force_x[sample] }}</td>
+                  <td>{{ rower.telemetry.average_gate_force_x[sample] }}</td>
+                  <td>{{ ((rower.telemetry.average_gate_force_x[sample] / rower.telemetry.max_gate_force_x[sample]) * 100) | round(2) }}</td>
+                  <td>{{ rower.telemetry.position_of_maxf[sample] }}</td>
+                  <td>{{ rower.telemetry.catch_force_gradient[sample] }}</td>
+                  <td>{{ rower.telemetry.finish_force_gradient[sample] }}</td>
+                  {% if boat_data.seat_sensors %}
+                    <td>{{ rower.telemetry.seat_length[sample] }}</td>
+                    <td>{{ rower.telemetry.legs_max_vel[sample] }}</td>
+                  {% endif %}
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <h4>Syncronisation</h4>
+        <div class="subtle">Measured in milliseconds as a comparison against the stroke seat.</div>
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-4">
+            <thead>
+              <tr>
+                <th>Seat</th>
+                <th>25% Recovery</th>
+                <th>50% Recovery</th>
+                <th>75% Recovery</th>
+                <th>Hang Start</th>
+                <th>Min Angle</th>
+                <th>Hang End</th>
+                <th>Effect Start</th>
+                <th>Up-to 70% Peak Force</th>
+                <th>Peak Force</th>
+                <th>From 70% Peak Force</th>
+                <th>Effect End</th>
+                <th>Pause Start</th>
+                <th>Max Angle</th>
+                <th>Release</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for rower in rowers %}
+                <tr>
+                  <td>{{ rower.telemetry.seat }}</td>
+                  <td>{{ rower.telemetry.difference_25[sample] }}</td>
+                  <td>{{ rower.telemetry.difference_50[sample] }}</td>
+                  <td>{{ rower.telemetry.difference_75[sample] }}</td>
+                  <td>{{ rower.telemetry.difference_hang[sample] }}</td>
+                  <td>{{ rower.telemetry.difference_min[sample] }}</td>
+                  <td>{{ rower.telemetry.difference_catch[sample] }}</td>
+                  <td>{{ rower.telemetry.difference_effective_start[sample] }}</td>
+                  <td>{{ rower.telemetry.difference_70max[sample] }}</td>
+                  <td>{{ rower.telemetry.difference_max[sample] }}</td>
+                  <td>{{ rower.telemetry.difference_max70[sample] }}</td>
+                  <td>{{ rower.telemetry.difference_effective_end[sample] }}</td>
+                  <td>{{ rower.telemetry.difference_finish[sample] }}</td>
+                  <td>{{ rower.telemetry.difference_max[sample] }}</td>
+                  <td>{{ rower.telemetry.difference_recovery[sample] }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="plot-wrapper">
+         <div class="panel mb-4">{{ graphs.sample_syncronisation | safe }}</div>
+          <button class="plot-fullscreen-btn" title="Fullscreen">⛶</button>
+        </div>
+
+        <div class="plot-wrapper">
+          <div class="panel mb-4">{{ graphs.sample_ratios | safe }}</div>
+          <button class="plot-fullscreen-btn" title="Fullscreen">⛶</button>
+        </div>
+
+        <div class="plot-wrapper">
+          <div class="panel mb-4">{{ graphs.sample_gateforcex | safe }}</div>
+          <button class="plot-fullscreen-btn" title="Fullscreen">⛶</button>
+        </div>
+
+        {% if boat_data.seat_sensors %}
+        <div class="plot-wrapper">
+          <div class="row g-4">
+            <div class="col-lg-6"><div class="panel">{{ graphs.sample_handlevelocity | safe }}</div></div>
+            <div class="col-lg-6"><div class="panel">{{ graphs.sample_legsvelocity | safe }}</div></div>
+          </div>
+          <button class="plot-fullscreen-btn" title="Fullscreen">⛶</button>
+        </div>
+
+        <div class="plot-wrapper">
+          <div class="row g-4">
+            <div class="col-lg-6"><div class="panel">{{ graphs.sample_bodyarmsvelocity | safe }}</div></div>
+            <div class="col-lg-6"><div class="panel">{{ graphs.sample_bodyarmsvelocity_seatposn | safe }}</div></div>
+          </div>
+          <button class="plot-fullscreen-btn" title="Fullscreen">⛶</button>
+        </div>
+
+        <div class="plot-wrapper">
+          <div class="row g-4">
+            <div class="col-lg-6"><div class="panel">{{ graphs.sample_legsvelocity_gateangle | safe }}</div></div>
+            <div class="col-lg-6"><div class="panel">{{ graphs.sample_bodyarmsvelocity_gateangle | safe }}</div></div>
+          </div>
+          <button class="plot-fullscreen-btn" title="Fullscreen">⛶</button>
+        </div>
+
+        <div class="plot-wrapper">
+          <div class="row g-4">
+            <div class="col-lg-6"><div class="panel">{{ graphs.sample_seatposition | safe }}</div></div>
+            <div class="col-lg-6"><div class="panel">{{ graphs.sample_legs_velocity_seatposn | safe }}</div></div>
+          </div>
+          <button class="plot-fullscreen-btn" title="Fullscreen">⛶</button>
+        </div>
+
+        {% else %}
+
+        <div class="plot-wrapper">
+          <div class="row g-4">
+            <div class="col-lg-6"><div class="panel">{{ graphs.sample_gateanglevelocity | safe }}</div></div>  
+            <div class="col-lg-6"><div class="panel">{{ graphs.sample_gateforcepercent | safe }}</div></div>
+          </div>
+          <button class="plot-fullscreen-btn" title="Fullscreen">⛶</button>
+        </div>
+
+        {% endif %}
+
+        <div class="plot-wrapper">
+          <div class="panel mb-4">{{ graphs.sample_gateforcepercent | safe }}</div>
+          <button class="plot-fullscreen-btn" title="Fullscreen">⛶</button>
+        </div>
+
+        <div class="plot-wrapper">
+          <div class="panel mb-4">{{ graphs.sample_gateanglevelocitydeg | safe }}</div>
+          <button class="plot-fullscreen-btn" title="Fullscreen">⛶</button>
+        </div>
+
+      <div class="panel mb-4">{{ graphs.sample_map | safe }}</div>
+      </div>
+      {% endif %}
+
+      {% elif page == 'export' %}
+
+      <div class="header-row">
+        <div>
+          <div class="title">Export Data</div>
+          <div class="subtle">Convert to PDF</div>
+        </div>
+        <div class="d-flex gap-2">
+          <a href="/dashboard/sessions/session_id={{ boat_data.id }}/page=overview" class="btn btn-sm btn-ghost">Overview</a>
+          <a href="/dashboard/sessions/session_id={{ boat_data.id }}/page=session" class="btn btn-sm btn-ghost">Session</a>
+          <a href="/dashboard/sessions/session_id={{ boat_data.id }}/page=average" class="btn btn-sm btn-ghost">Average</a>
+          <a href="/dashboard/sessions/session_id={{ boat_data.id }}/page=samples" class="btn btn-sm btn-ghost">Intervals</a>
+          <a href="/dashboard/sessions/session_id={{ boat_data.id }}/page=export" class="btn btn-sm btn-primary">Export</a>
+        </div>
+      </div>
+
+      <div class="download-section">
+
+        <div class="download-card">
+
+          <h3 class="download-title">Download Session Report</h3>
+          <p class="download-subtitle">
+            Export this rowing session as a professionally formatted PDF report.
+          </p>
+
+          <form method="POST" action="/dashboard/sessions/session_id={{ boat_data.id }}/page=export">
+            <button type="submit" name="action" value="download" class="download-btn">
+              Download PDF Report
+            </button>
+          </form>
+
+        </div>
+
+      </div>
+
+      <!-- Admin -->
+      {% elif page == 'admin' %}
+
+      <div class="header-row">
+        <div>
+          <div class="title">Admin Panel</div>
+          <div class="subtle">User management</div>
+        </div>
+      </div>
+
+      <!-- Register New User Section -->
+      <div class="admin-section mb-5">
+        <div class="section-header">
+          <h4 class="section-title">
+            <i class="fas fa-user-plus me-2"></i>
+            Register New User
+          </h4>
+          <span class="section-subtitle">Create a new account</span>
+        </div>
+
+        <div class="admin-card">
+          {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+              {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                  {{ message }}
+                  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+              {% endfor %}
+            {% endif %}
+          {% endwith %}
+
+          <form action="/dashboard/admin/register_user" method="POST">
+            <div class="form-grid">
+              <div class="form-group">
+                <label class="form-label">First Name</label>
+                <input type="text" name="first_name" class="form-input" placeholder="Enter first name" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Last Name</label>
+                <input type="text" name="last_name" class="form-input" placeholder="Enter last name" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Email</label>
+                <input type="email" name="email" class="form-input" placeholder="Enter email address" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Password</label>
+                <input type="text" name="password" class="form-input" placeholder="Enter password" required>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">User Type</label>
+                <select name="user_type" class="form-select" required>
+                  <option value="" disabled selected>Select user type</option>
+                  <option value="admin">Admin</option>
+                  <option value="coach">Coach</option>
+                  <option value="athlete">Athlete</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">&nbsp;</label>
+                <button type="submit" class="admin-btn">
+                  <i class="fas fa-user-plus"></i>
+                  Register User
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- User Management Section -->
+      <div class="admin-section">
+        <div class="section-header">
+          <h4 class="section-title">
+            <i class="fas fa-users-cog me-2"></i>
+            User Management
+          </h4>
+          <span class="user-count">{{ all_users|length }} total users</span>
+        </div>
+
+        {% if all_users %}
+        <div class="users-grid">
+          {% for u in all_users %}
+          <div class="user-card admin-user-card">
+            <div class="user-avatar">
+              <div class="avatar-circle">
+                {{ u.first_name[0] }}{{ u.last_name[0] }}
+              </div>
+            </div>
+            <div class="user-info">
+              <h6 class="user-name">{{ u.first_name }} {{ u.last_name }}</h6>
+              <p class="user-email">{{ u.email }}</p>
+              <div class="user-meta">
+                <span class="user-role">
+                  {% if u.is_admin %}
+                  <span class="badge role-developer">Admin</span>
+                  {% elif u.is_coach %}
+                  <span class="badge role-coach">Coach</span>
+                  {% else %}
+                  <span class="badge role-athlete">Athlete</span>
+                  {% endif %}
+                </span>
+                <span class="user-id">ID: {{ u.id }}</span>
+              </div>
+            </div>
+            <div class="user-actions">
+              <form action="/dashboard/admin/delete_user/{{ u.id }}" method="POST" style="display:inline;">
+                <button class="action-btn delete-btn" type="submit" onclick="return confirm('Are you sure you want to delete this user?')" title="Delete User">
+                  <i class="fas fa-trash-alt"></i>
+                </button>
+              </form>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+          <div class="empty-icon">
+            <i class="fas fa-users"></i>
+          </div>
+          <h5>No users found</h5>
+          <p>Start by registering your first user</p>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Account Page -->
+      {% elif page == 'account' %}
+
+      <div class="header-row">
+        <div>
+          <div class="title">Account</div>
+          <div class="subtle">Your user information.</div>
+        </div>
+      </div>
+
+      <div class="panel"> 
+        <h3>Profile Details</h3> 
+        <label><strong>User ID:</strong> {{ user.id}}</label>
+        <label><strong>First Name:</strong> {{ user.first_name}}</label>
+        <label><strong>Last Name:</strong> {{ user.last_name}}</label>
+        <label><strong>Email:</strong> {{ user.email}}</label>  
+      </div>
+
+      <!-- Online Users Page -->
+      {% elif page == 'online_users' %}
+
+      <div class="header-row">
+        <div>
+          <div class="title">Online Users</div>
+          <div class="subtle">Users who have been active in the last 15 minutes.</div>
+        </div>
+      </div>
+
+      <!-- Active Users Section -->
+      <div class="users-section mb-5">
+        <div class="section-header">
+          <h4 class="section-title">
+            <i class="fas fa-circle text-success me-2" style="font-size: 0.8em;"></i>
+            Active Users
+          </h4>
+          <span class="user-count">{{ users_online|length }} online</span>
+        </div>
+        
+        {% if users_online %}
+        <div class="users-grid">
+          {% for user_item in users_online %}
+          <div class="user-card">
+            <div class="user-avatar">
+              <div class="avatar-circle">
+                {{ user_item.first_name[0] }}{{ user_item.last_name[0] }}
+              </div>
+            </div>
+            <div class="user-info">
+              <h6 class="user-name">{{ user_item.first_name }} {{ user_item.last_name }}</h6>
+              <p class="user-email">{{ user_item.email }}</p>
+              <div class="user-meta">
+                <span class="user-role">
+                  {% if user_item.is_admin %}
+                  <span class="badge role-developer">Developer</span>
+                  {% elif user_item.is_coach %}
+                  <span class="badge role-coach">Coach</span>
+                  {% else %}
+                  <span class="badge role-athlete">Athlete</span>
+                  {% endif %}
+                </span>
+                <span class="user-status online">
+                  <i class="fas fa-circle"></i>
+                  {{ user_item.last_activity_formatted }}
+                </span>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+          <div class="empty-icon">
+            <i class="fas fa-users"></i>
+          </div>
+          <h5>No users online</h5>
+          <p>Check back later to see who's active</p>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Inactive Users Section -->
+      <div class="users-section">
+        <div class="section-header">
+          <h4 class="section-title">
+            <i class="fas fa-circle text-muted me-2" style="font-size: 0.8em;"></i>
+            Inactive Users
+          </h4>
+          <span class="user-count">{{ users_offline|length }} offline</span>
+        </div>
+        
+        {% if users_offline %}
+        <div class="users-grid">
+          {% for user_item in users_offline %}
+          <div class="user-card">
+            <div class="user-avatar">
+              <div class="avatar-circle inactive">
+                {{ user_item.first_name[0] }}{{ user_item.last_name[0] }}
+              </div>
+            </div>
+            <div class="user-info">
+              <h6 class="user-name">{{ user_item.first_name }} {{ user_item.last_name }}</h6>
+              <p class="user-email">{{ user_item.email }}</p>
+              <div class="user-meta">
+                <span class="user-role">
+                  {% if user_item.is_admin %}
+                  <span class="badge role-developer">Developer</span>
+                  {% elif user_item.is_coach %}
+                  <span class="badge role-coach">Coach</span>
+                  {% else %}
+                  <span class="badge role-athlete">Athlete</span>
+                  {% endif %}
+                </span>
+                <span class="user-status offline">
+                  <i class="fas fa-clock"></i>
+                  {{ user_item.last_activity_formatted }}
+                </span>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+          <div class="empty-icon">
+            <i class="fas fa-users"></i>
+          </div>
+          <h5>All users online</h5>
+          <p>Everyone is currently active</p>
+        </div>
+        {% endif %}
+      </div>
+
+      {% endif %}
+
+    </main>
+  </div>
+
+  <!-- Defining global JS variables -->
+  <script>
+    const getUsersApiRoute = "{{ apiroute_getallusers }}";
+    const showUploadModal = "{{ show_upload_modal }}";
+  </script>
+
+  <!-- Custom JS -->
+  <script src="{{ url_for('static', filename='js/upload_modal.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/loading.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/sidebar.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/graph_fullscreen.js') }}"></script>
+  <script>
+    // Initialize searchable crew selects using Select2
+    $(document).ready(function() {
+      if (window.jQuery && $.fn.select2) {
+        $('.crew-select').each(function() {
+          var placeholder = $(this).data('placeholder') || 'Select user...';
+          $(this).select2({
+            placeholder: placeholder,
+            allowClear: true,
+            width: 'resolve',
+            dropdownAutoWidth: true
+          });
+        });
+      }
+    });
+
+    // Crew list editing toggle for coaches/admins
+    $(function(){
+      let editing = false;
+      const editBtn = $('#editCrewBtn');
+      const saveContainer = $('#saveCrewContainer');
+
+      editBtn.on('click', function(){
+        editing = !editing;
+        if(editing){
+          // store originals
+          $('select.crew-select').each(function(){
+            $(this).data('originalVal', $(this).val());
+          });
+          $('.crew-display').addClass('d-none');
+          $('.crew-editable').removeClass('d-none');
+          $('select.crew-select').prop('disabled', false).trigger('change.select2');
+          saveContainer.removeClass('d-none');
+          editBtn.text('Cancel');
+        } else {
+          // revert selects to original values
+          $('select.crew-select').each(function(){
+            $(this).val($(this).data('originalVal')).trigger('change.select2');
+          });
+          $('.crew-display').removeClass('d-none');
+          $('.crew-editable').addClass('d-none');
+          $('select.crew-select').prop('disabled', true).trigger('change.select2');
+          saveContainer.addClass('d-none');
+          editBtn.text('Edit Crewlist');
+        }
+      });
+    });
+  </script>
+  <script>
+    // Fetch and display crew preview for a session
+    $(document).on('click', '.view-crew-btn', function (e) {
+      e.preventDefault();
+      const sessionId = $(this).data('session-id');
+      const container = $(`#crew-preview-${sessionId}`);
+
+      if (container.is(':visible')) {
+        container.slideUp();
+        return;
+      }
+
+      // If already loaded, just show
+      if (container.data('loaded')) {
+        container.slideDown();
+        return;
+      }
+
+      container.find('.crew-list').empty();
+      container.find('.crew-loading').show();
+
+      fetch(`/dashboard/sessions/session_crew/${sessionId}`)
+        .then(res => res.json())
+        .then(data => {
+          container.find('.crew-loading').hide();
+          if (data.error) {
+            container.find('.crew-list').append(`<li class="list-group-item text-danger">${data.error}</li>`);
+            container.slideDown();
+            return;
+          }
+
+          const rowers = Array.isArray(data.rowers) ? data.rowers : [];
+          const cox = data.coxswain || null;
+
+          // Render coxswain even if DB record doesn't exist or undefined
+          let coxLabel = 'Unassigned';
+          let coxAssigned = false;
+          if (cox) {
+            if (cox.user && (cox.user.first_name || cox.user.last_name)) {
+              coxLabel = `${cox.user.first_name || ''} ${cox.user.last_name || ''}`.trim();
+              coxAssigned = !!cox.user.user_id;  // Only assigned if real DB user
+            } else if (cox.first_name || cox.last_name) {
+              // when cox comes from the API it is returned directly as a user object
+              coxLabel = `${cox.first_name || ''} ${cox.last_name || ''}`.trim();
+              coxAssigned = !!cox.user_id; // mark as assigned since we have an actual DB user
+            } else if (cox.name) {
+              coxLabel = cox.name;
+              // coxAssigned stays false
+            } else if (cox.user_id) {
+              coxLabel = `User ID ${cox.user_id}`;
+              coxAssigned = !!cox.user_id;
+            }
+          }
+
+          const coxRight = coxAssigned
+            ? '<span class="badge badge-defined">User defined</span>'
+            : '<span class="badge badge-undefined">User undefined</span>';
+          container.find('.crew-list').append(`<li class="list-group-item crew-item"><div class="crew-info"><strong>Coxswain:</strong> ${coxLabel}</div>${coxRight}</li>`);
+
+          if (rowers.length > 0) {
+            rowers.forEach(r => {
+              const seat = r.seat ?? (r.telemetry && r.telemetry.seat) ?? 'N/A';
+              // side information removed per user request
+              // const side = r.side ?? (r.telemetry && r.telemetry.side) ?? '';
+
+              let name = 'Unassigned';
+              let assigned = false;
+              if (r.user && (r.user.first_name || r.user.last_name)) {
+                name = `${r.user.first_name || ''} ${r.user.last_name || ''}`.trim();
+                assigned = !!r.user.user_id;  // Only assigned if real DB user
+              } else if (r.name) {
+                name = r.name;
+                // assigned stays false - file name is not a real user assignment
+              } else if (r.telemetry && r.telemetry.name) {
+                name = r.telemetry.name;
+                // assigned stays false - telemetry name is not a real user assignment
+              }
+
+              const right = assigned
+                ? '<span class="badge badge-defined">User defined</span>'
+                : '<span class="badge badge-undefined">User undefined</span>';
+              container.find('.crew-list').append(`<li class="list-group-item crew-item"><div class="crew-info"><strong>Seat ${seat}:</strong> ${name}</div>${right}</li>`);
+            });
+          } else {
+            container.find('.crew-list').append('<li class="list-group-item text-muted">No rowers data</li>');
+          }
+
+          container.data('loaded', true);
+          container.slideDown();
+        })
+        .catch(err => {
+          container.find('.crew-loading').hide();
+          container.find('.crew-list').append('<li class="list-group-item text-danger">Failed to load crew</li>');
+          container.slideDown();
+        });
+    });
+
+    // File upload display
+    $(document).ready(function() {
+      $('#file').on('change', function() {
+        const file = this.files[0];
+        if (file) {
+          $('#file-name').text(file.name);
+        } else {
+          $('#file-name').text('');
+        }
+      });
+    });
+  </script>
+</body>
+</html>

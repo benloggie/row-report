@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RowReport - Home</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='media/logo.png') }}">
+</head>
+<body>
+    <section class="gradient"></section>
+    <!-- Header -->
+    <header>
+        <div class="logo">
+            <img src="{{ url_for('static', filename='media/heading.png') }}" alt="RowReport Logo">
+        </div>
+        <nav>
+            <ul>
+                <li><a href="{{ url_for('home') }}" class="{% if request.path=='/' %}active{% else %}inactive{% endif %}">Home</a></li>
+                <li><a href="{{ url_for('login') }}" class="{% if request.path=='/login' %}active{% else %}inactive{% endif %}">Login</a></li>
+                <li><a href="{{ url_for('register') }}" class="{% if request.path=='/register' %}active{% else %}inactive{% endif %}">Register →</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <section class="main overlap">
+        <h5>Introducing RowReport</h5>
+        <p>The number one solution to get the most out of your <br> Peach Telemetry Systems for athlete development.</p>
+
+        <img src="{{ url_for('static', filename='media/Dashboard.png') }}" class="center_image">
+    </section>
+
+    <section class="statistic_container">
+        <h5>Global Statistics for Row Report</h5>
+        <div class="box">
+            <h5>Current Users</h5>
+            <h4>{{ statistics.users }}</h4>
+            <h6>Athletes and Coaches</h6>
+        </div>
+        <div class="box">
+            <h5>Sessions Uploaded</h5>
+            <h4>{{ statistics.uploads }}</h4>
+            <h6>Uploaded by coaches</h6>
+        </div>
+        <div class="box">
+            <h5>Strokes Analysed</h5>
+            <h4>{{ statistics.strokes }}</h4>
+            <h6>Strokes</h6>
+        </div>
+        <div class="box">
+            <h5>Distance Analysed</h5>
+            <h4>{{ statistics.distance | round(2) }}</h4>
+            <h6>Meters</h6>
+        </div>
+        <div class="box">
+            <h5>Power Generated</h5>
+            <h4>{{ statistics.wattage | round(0) | int }}</h4>
+            <h6>Watts</h6>
+        </div>
+    </section>
+
+    <footer>
+        <p>&copy; 2025 RowReport. Developed by Ben Loggie</p>
+    </footer>
+</body>
+</html>

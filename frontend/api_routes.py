@@ -1,0 +1,34 @@
+import os
+
+API_BASE_URL = os.getenv("API_BASE_URL", "http://127.0.0.1:8000")
+
+def api_route(path: str) -> str:
+    return str(API_BASE_URL + path)
+
+# Landing page
+get_statistics = api_route("/get_statistics")
+
+create_user = api_route("/register")
+check_user = api_route("/login")
+get_all_users = api_route("/get_all_users")
+email_user = api_route("/email_user")
+
+upload_session = api_route('/upload/session')
+upload_user_data = api_route('/upload/user_data')
+assign_coxswain = api_route('/upload/coxswain_data')
+delete_session = api_route('/delete/session')
+delete_user = api_route('/delete/user')
+get_user_information = api_route('/get_user_information')
+update_permissions = api_route('/update_permissions')
+update_last_activity = api_route('/update_last_activity')
+get_online_users = api_route('/get_online_users')
+
+get_averages = api_route('/user_data/get_averages')
+get_summary = api_route('/user_data/get_summary')
+get_radar_averages = api_route('/user_data/get_radar_averages')
+get_telemetry_data_training_zones = api_route('/user_data/get_telemetry_data')
+get_session = api_route('/user_data/get_session')
+get_sessions = api_route('/user_data/get_sessions')
+get_rower_data = api_route('/user_data/get_rower_data')
+get_coxswain_data = api_route('/user_data/get_coxswain_data')
+

@@ -1,0 +1,28 @@
+# API Main
+from fastapi import FastAPI
+from sqlmodel import SQLModel
+from database_directory.db import engine
+from api_directory.routes import sessions, users, retrieve
+from fastapi.middleware.cors import CORSMiddleware
+import logging
+
+app = FastAPI()
+logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Or specify your frontend URL(s) for more security
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.on_event("startup")
+def on_startup():
+    SQLModel.metadata.create_all(engine)
+    #SQLModel.metadata.drop_all(engine)
+
+app.include_router(users.router)
+app.include_router(sessions.router)
+app.include_router(retrieve.router)
+

@@ -1,0 +1,9 @@
+fastapi
+psycopg2-binary
+pydantic
+sqlmodel
+uvicorn
+python-dotenv
+pydantic[email]
+EmailMessage
+jinja2

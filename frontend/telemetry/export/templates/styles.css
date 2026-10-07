@@ -1,0 +1,272 @@
+/* ============================ */
+/* GLOBAL PDF MODERN TYPOGRAPHY */
+/* ============================ */
+
+body {
+  font-family: "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  font-size: 11.5px;
+  margin: 38px;
+
+  color: #0f172a;
+  line-height: 1.55;
+
+  background: #ffffff;
+
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+
+/* ============================ */
+/* HEADINGS                     */
+/* ============================ */
+
+h1 {
+  font-size: 26px;
+  font-weight: 800;
+  margin-bottom: 6px;
+  letter-spacing: -0.4px;
+  color: #020617;
+}
+
+h2 {
+  font-size: 19px;
+  font-weight: 750;
+
+  margin-top: 0;
+  margin-bottom: 14px;
+
+  padding-bottom: 8px;
+  border-bottom: 2px solid #e2e8f0;
+
+  letter-spacing: -0.2px;
+  color: #0f172a;
+}
+
+h3 {
+  margin-top: 26px;
+  margin-bottom: 10px;
+
+  font-size: 14.5px;
+  font-weight: 700;
+
+  letter-spacing: -0.15px;
+  color: #1e293b;
+}
+
+p {
+  margin: 6px 0;
+  font-size: 11.3px;
+  font-weight: 400;
+  color: #334155;
+}
+
+
+/* ============================ */
+/* PAGE STRUCTURE               */
+/* ============================ */
+
+.pdf-section {
+  width: 100%;
+}
+
+.page-break {
+  page-break-before: always;
+}
+
+
+/* ============================ */
+/* HEADER BLOCK                 */
+/* ============================ */
+
+.report-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.report-header p {
+  font-size: 11px;
+  color: #475569;
+}
+
+.report-header hr {
+  margin-top: 16px;
+  border: none;
+  border-top: 1px solid #e2e8f0;
+}
+
+
+/* ============================ */
+/* INFO GRID                    */
+/* ============================ */
+
+.info-grid {
+  display: flex;
+  justify-content: space-between;
+  gap: 45px;
+  margin-top: 12px;
+}
+
+.description-box {
+  border: 1px solid #e2e8f0;
+  padding: 14px;
+  border-radius: 12px;
+
+  background: #f8fafc;
+
+  font-size: 11px;
+  color: #334155;
+}
+
+
+/* ============================ */
+/* PREMIUM MODERN DATA TABLES   */
+/* ============================ */
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+
+  margin-top: 16px;
+  margin-bottom: 24px;
+
+  table-layout: fixed;
+
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+
+  background: #ffffff;
+
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+/* Header Row */
+thead {
+  background: #f1f5f9;
+}
+
+th {
+  padding: 10px 7px;
+
+  font-size: 9.8px;
+  font-weight: 700;
+
+  text-transform: uppercase;
+  letter-spacing: 0.55px;
+
+  color: #0f172a;
+
+  border-bottom: 1px solid #cbd5e1;
+
+  text-align: center;
+}
+
+/* Body Cells */
+td {
+  padding: 9px 7px;
+
+  font-size: 10.6px;
+  font-weight: 500;
+
+  color: #1e293b;
+
+  border-bottom: 1px solid #f1f5f9;
+
+  text-align: center;
+  vertical-align: middle;
+
+  word-wrap: break-word;
+}
+
+/* Zebra Striping */
+tbody tr:nth-child(even) {
+  background: #fafafa;
+}
+
+/* Slight emphasis on first columns */
+td:first-child,
+td:nth-child(2) {
+  font-weight: 650;
+  color: #0f172a;
+}
+
+/* Prevent row splitting */
+tr {
+  page-break-inside: avoid;
+}
+
+/* Remove border from last row */
+tbody tr:last-child td {
+  border-bottom: none;
+}
+
+
+/* ============================ */
+/* AVERAGE SUMMARY BLOCK        */
+/* ============================ */
+
+.avg-summary {
+  font-weight: 700;
+  font-size: 12px;
+
+  color: #0f172a;
+
+  padding: 12px 14px;
+  border-radius: 12px;
+
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+
+  margin-bottom: 20px;
+}
+
+
+/* ============================ */
+/* GRAPH CONTAINERS (MODERN)    */
+/* ============================ */
+
+.plotly-graph-div {
+  width: 100% !important;
+  max-width: 100% !important;
+
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+
+  padding: 14px;
+  margin: 20px 0;
+
+  background: #ffffff;
+
+  overflow: hidden !important;
+  page-break-inside: avoid;
+
+  text-align: center;
+
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+/* Graph Images */
+.plotly-graph-div img {
+  width: 100% !important;
+  max-width: 100% !important;
+
+  height: auto !important;
+  max-height: 380px !important;
+
+  display: block;
+  margin: 0 auto;
+
+  object-fit: contain;
+}
+
+
+/* ============================ */
+/* OPTIONAL SMALL TABLE MODE    */
+/* ============================ */
+
+table.small td,
+table.small th {
+  font-size: 9.5px;
+  padding: 6px;
+}
